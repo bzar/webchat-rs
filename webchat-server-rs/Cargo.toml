@@ -1,0 +1,8 @@
+[package]
+name = "webchat-server-rs"
+version = "0.1.0"
+authors = ["Teemu Erkkola <teemu.erkkola@iki.fi>"]
+
+[dependencies]
+ws = "0.7.6"
+webchat-rs = { path = ".." }
