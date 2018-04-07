@@ -20,6 +20,7 @@ extern {
 #[wasm_bindgen]
 pub fn main() {
     send(&serialize(Message::Ping));
+    send(&serialize(Message::Chat("Hello World!".to_owned())));
 }
 
 #[wasm_bindgen]
@@ -28,5 +29,6 @@ pub fn recv(buffer: &[u8]) {
     match msg {
         Message::Ping => send(&serialize(Message::Pong)),
         Message::Pong => log("got Pong!"),
+        Message::Chat(content) => log(&content)
     };
 }

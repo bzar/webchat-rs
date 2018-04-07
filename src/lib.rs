@@ -8,7 +8,7 @@ use rmp_serde::{Deserializer, Serializer};
 
 #[derive(Serialize, Deserialize,Debug,PartialEq)]
 pub enum Message {
-    Ping, Pong
+    Ping, Pong, Chat(String)
 }
 
 pub fn serialize(message: Message) -> Vec<u8> {
