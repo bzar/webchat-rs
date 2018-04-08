@@ -5,6 +5,7 @@ use ws::listen;
 use webchat_rs::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::env;
 
 fn send(sender: &mut ws::Sender, message: Message) -> ws::Result<()> {
     sender.send(ws::Message::Binary(serialize(message)))
@@ -29,9 +30,15 @@ impl Senders {
     }
 }
 fn main() {
+    let args: Vec<_> = env::args().collect();
+
+    if args.len() != 2 {
+        println!("Usage: {} <serve address>", args[0]);
+        return;
+    }
     let senders: &RefCell<Senders> = &RefCell::new(Senders::new());
 
-    listen("127.0.0.1:8081", |out| {
+    listen(&args[1], |out| {
         let out = Rc::new(RefCell::new(out));
         senders.borrow_mut().add(Rc::clone(&out));
         println!("new connection, sending ping");
