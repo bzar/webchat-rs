@@ -38,7 +38,7 @@ pub fn recv(buffer: &[u8]) {
 
 #[wasm_bindgen]
 pub fn input(msg: &str) {
-    if msg.starts_with("/nick ") {
+    if msg.starts_with("/nick") {
         if let Some(nick) = msg.splitn(2, " ").skip(1).next() {
             send(&serialize(Message::Nick(nick.to_owned())));
         } else {
