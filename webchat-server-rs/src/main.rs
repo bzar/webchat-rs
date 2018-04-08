@@ -6,14 +6,37 @@ use webchat_rs::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+fn send(sender: &mut ws::Sender, message: Message) -> ws::Result<()> {
+    sender.send(ws::Message::Binary(serialize(message)))
+}
+fn send_binary(sender: &mut ws::Sender, buffer: Vec<u8>) -> ws::Result<()> {
+    sender.send(ws::Message::Binary(buffer))
+}
+struct Senders(Vec<Rc<RefCell<ws::Sender>>>);
+
+impl Senders {
+    fn new() -> Senders {
+        Senders(Vec::new())
+    }
+    fn add(&mut self, sender: Rc<RefCell<ws::Sender>>) {
+        self.0.push(sender);
+    }
+    fn broadcast(&mut self, message: Message) {
+        let msg = serialize(message);
+        self.0.iter().for_each(|out| {
+            send_binary(&mut out.borrow_mut(), msg.clone()).unwrap();
+        });
+    }
+}
 fn main() {
-    let senders: &RefCell<Vec<Rc<RefCell<ws::Sender>>>> = &RefCell::new(Vec::new());
+    let senders: &RefCell<Senders> = &RefCell::new(Senders::new());
 
     listen("127.0.0.1:8081", |out| {
         let out = Rc::new(RefCell::new(out));
-        senders.borrow_mut().push(Rc::clone(&out));
+        senders.borrow_mut().add(Rc::clone(&out));
         println!("new connection, sending ping");
-        out.borrow_mut().send(ws::Message::Binary(serialize(Message::Ping))).unwrap();
+        send(&mut out.borrow_mut(), Message::Ping).unwrap();
+        let nick = RefCell::new("Anonymous".to_owned());
 
         move |msg| {
             if let ws::Message::Binary(buffer) = msg {
@@ -21,15 +44,21 @@ fn main() {
                 match msg {
                     Message::Ping => {
                         println!("got ping, sending pong");
-                        out.borrow_mut().send(ws::Message::Binary(serialize(Message::Pong))).unwrap()
+                        send(&mut out.borrow_mut(), Message::Pong).unwrap();
                     },
                     Message::Pong => println!("got pong!"),
                     Message::Chat(content) => {
-                        let msg = serialize(Message::Chat(content));
-                        senders.borrow().iter().for_each(|out| {
-                            out.borrow_mut().send(ws::Message::Binary(msg.clone())).unwrap();
-                        });
-                    }
+                        let msg = Message::Chat(format!("{}: {}", nick.borrow(), content));
+                        senders.borrow_mut().broadcast(msg);
+                    },
+                    Message::Nick(value) => {
+                        nick.replace(value.clone());
+                        send(&mut out.borrow_mut(), Message::Nick(value)).unwrap();
+                    },
+                    Message::Me(content) => {
+                        let msg = Message::Me(format!("{} {}", nick.borrow(), content));
+                        senders.borrow_mut().broadcast(msg);
+                    },
                 };
             }
             Ok(())

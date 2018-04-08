@@ -9,6 +9,8 @@ use webchat_rs::*;
 #[wasm_bindgen(module = "./webchat_client")]
 extern {
     fn send(msg: &[u8]);
+    #[wasm_bindgen(js_name = addMessage)]
+    fn add_message(msg: &str);
 }
 
 #[wasm_bindgen]
@@ -29,6 +31,29 @@ pub fn recv(buffer: &[u8]) {
     match msg {
         Message::Ping => send(&serialize(Message::Pong)),
         Message::Pong => log("got Pong!"),
-        Message::Chat(content) => log(&content)
+        Message::Chat(content) | Message::Me(content) => add_message(&content),
+        Message::Nick(nick) => add_message(&format!("You are now known as {}", nick))
     };
+}
+
+#[wasm_bindgen]
+pub fn input(msg: &str) {
+    if msg.starts_with("/nick ") {
+        if let Some(nick) = msg.splitn(2, " ").skip(1).next() {
+            send(&serialize(Message::Nick(nick.to_owned())));
+        } else {
+            add_message("Usage: /nick <nick>");
+        }
+    } else if msg.starts_with("/me") {
+        if let Some(content) = msg.splitn(2, " ").skip(1).next() {
+            send(&serialize(Message::Me(content.to_owned())));
+        } else {
+            add_message("Usage: /me <action>");
+        }
+    } else if msg.starts_with("/") {
+        add_message("Unknown command")
+    } else {
+        send(&serialize(Message::Chat(msg.to_owned())));
+    }
+
 }

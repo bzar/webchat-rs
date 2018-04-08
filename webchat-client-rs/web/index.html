@@ -4,8 +4,58 @@
   <meta charset="UTF-8">
   <title>webchat-client-rs</title>
   <script src="./index.js"></script>
+  <style>
+html {
+  height: 100%
+}
+body {
+  background-color: #111;
+  color: lime;
+  max-width: 80ch;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 40ch;
+  height: 100%;
+}
+#messages {
+  flex: auto;
+  list-style: none;
+  font-family: monospace;
+  padding: 1ch;
+  overflow-y: scroll;
+  border: 1px solid lime;
+  box-sizing: border-box;
+}
+#messageForm {
+  display: flex;
+  max-width: 80ch;
+}
+#messageInput {
+  background-color: transparent;
+  border: 1px solid lime;
+  color: lime;
+  height: 2em;
+  box-sizing: border-box;
+  flex: auto;
+  padding: 1ch;
+}
+#messageSubmit {
+  background-color: transparent;
+  border: 1px solid lime;
+  color: lime;
+  height: 2em;
+  box-sizing: border-box;
+  flex: initial;
+}
+  </style>
 </head>
 <body>
   <h1>webchat-client-rs</h1>
+  <ul id="messages"></ul>
+  <form id="messageForm">
+    <input id="messageInput" type="text">
+    <input id="messageSubmit" type="submit" value=">">
+  </form>
 </body>
 </html>
