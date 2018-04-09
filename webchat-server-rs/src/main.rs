@@ -9,7 +9,8 @@ use std::env;
 struct WsMsg(Message);
 impl Into<ws::Message> for WsMsg {
     fn into(self) -> ws::Message {
-        ws::Message::Binary(serialize(self.0))
+        // Message serialization should ALWAYS succeed
+        ws::Message::Binary(serialize(self.0).unwrap())
     }
 }
 
@@ -31,27 +32,30 @@ fn main() {
 
         move |msg| {
             if let ws::Message::Binary(buffer) = msg {
-                let msg = deserialize(&buffer);
-                match msg {
-                    Message::Ping => {
-                        out.send(WsMsg(Message::Pong))
-                    },
-                    Message::Pong => { println!("Pong!"); Ok(()) }
-                    Message::Chat(content) => {
-                        let msg = Message::Chat(format!("{}: {}", nick.borrow(), content));
-                        out.broadcast(WsMsg(msg))
-                    },
-                    Message::Nick(value) => {
-                        nick.replace(value.clone());
-                        out.send(WsMsg(Message::Nick(value)))
-                    },
-                    Message::Me(content) => {
-                        let msg = Message::Me(format!("{} {}", nick.borrow(), content));
-                        out.broadcast(WsMsg(msg))
-                    },
+                if let Ok(msg) = deserialize(&buffer) {
+                    match msg {
+                        Message::Ping => {
+                            out.send(WsMsg(Message::Pong))
+                        },
+                        Message::Pong => { println!("Pong!"); Ok(()) }
+                        Message::Chat(content) => {
+                            let msg = Message::Chat(format!("{}: {}", nick.borrow(), content));
+                            out.broadcast(WsMsg(msg))
+                        },
+                        Message::Nick(value) => {
+                            nick.replace(value.clone());
+                            out.send(WsMsg(Message::Nick(value)))
+                        },
+                        Message::Me(content) => {
+                            let msg = Message::Me(format!("{} {}", nick.borrow(), content));
+                            out.broadcast(WsMsg(msg))
+                        },
+                    }
+                } else {
+                    Err(ws::Error::new(ws::ErrorKind::Internal, "Deserialization error"))
                 }
             } else {
-                Ok(())
+                Err(ws::Error::new(ws::ErrorKind::Internal, "Not a binary message"))
             }
         }
     });
