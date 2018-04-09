@@ -3,8 +3,6 @@ extern crate serde;
 extern crate serde_derive;
 extern crate rmp_serde;
 
-use serde::{Serialize, Deserialize};
-use rmp_serde::{Deserializer, Serializer};
 use rmp_serde::encode::Error as EncodeError;
 use rmp_serde::decode::Error as DecodeError;
 
@@ -14,12 +12,11 @@ pub enum Message {
 }
 
 pub fn serialize(message: Message) -> Result<Vec<u8>, EncodeError> {
-    let mut buffer = Vec::new();
-    message.serialize(&mut Serializer::new(&mut buffer)).map(|_| buffer)
+    rmp_serde::to_vec(&message)
 }
 
 pub fn deserialize(buffer: &[u8]) -> Result<Message, DecodeError> {
-    Deserialize::deserialize(&mut Deserializer::new(buffer))
+    rmp_serde::from_slice(buffer)
 }
 
 
