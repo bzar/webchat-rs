@@ -29,8 +29,8 @@ mod test {
     #[test]
     fn serde_ping() {
         let ping = Message::Ping;
-        let serialized = serialize(ping);
-        let deserialized = deserialize(&serialized);
+        let serialized = serialize(ping).unwrap();
+        let deserialized = deserialize(&serialized).unwrap();
         assert!(deserialized == Message::Ping);
     }
 }
