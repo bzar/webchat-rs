@@ -4,31 +4,15 @@ extern crate ws;
 use ws::listen;
 use webchat_rs::*;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::env;
 
-fn send(sender: &mut ws::Sender, message: Message) -> ws::Result<()> {
-    sender.send(ws::Message::Binary(serialize(message)))
+struct WsMsg(Message);
+impl Into<ws::Message> for WsMsg {
+    fn into(self) -> ws::Message {
+        ws::Message::Binary(serialize(self.0))
+    }
 }
-fn send_binary(sender: &mut ws::Sender, buffer: Vec<u8>) -> ws::Result<()> {
-    sender.send(ws::Message::Binary(buffer))
-}
-struct Senders(Vec<Rc<RefCell<ws::Sender>>>);
 
-impl Senders {
-    fn new() -> Senders {
-        Senders(Vec::new())
-    }
-    fn add(&mut self, sender: Rc<RefCell<ws::Sender>>) {
-        self.0.push(sender);
-    }
-    fn broadcast(&mut self, message: Message) {
-        let msg = serialize(message);
-        self.0.iter().for_each(|out| {
-            send_binary(&mut out.borrow_mut(), msg.clone()).unwrap();
-        });
-    }
-}
 fn main() {
     let args: Vec<_> = env::args().collect();
 
@@ -36,13 +20,13 @@ fn main() {
         println!("Usage: {} <serve address>", args[0]);
         return;
     }
-    let senders: &RefCell<Senders> = &RefCell::new(Senders::new());
 
-    listen(&args[1], |out| {
-        let out = Rc::new(RefCell::new(out));
-        senders.borrow_mut().add(Rc::clone(&out));
-        println!("new connection, sending ping");
-        send(&mut out.borrow_mut(), Message::Ping).unwrap();
+    let server = listen(&args[1], |out| {
+        match out.send(WsMsg(Message::Ping)) {
+            Ok(_) => println!("Ping?"),
+            Err(e) => eprintln!("Error sending initial ping: {:?}", e)
+        };
+
         let nick = RefCell::new("Anonymous".to_owned());
 
         move |msg| {
@@ -50,25 +34,30 @@ fn main() {
                 let msg = deserialize(&buffer);
                 match msg {
                     Message::Ping => {
-                        println!("got ping, sending pong");
-                        send(&mut out.borrow_mut(), Message::Pong).unwrap();
+                        out.send(WsMsg(Message::Pong))
                     },
-                    Message::Pong => println!("got pong!"),
+                    Message::Pong => { println!("Pong!"); Ok(()) }
                     Message::Chat(content) => {
                         let msg = Message::Chat(format!("{}: {}", nick.borrow(), content));
-                        senders.borrow_mut().broadcast(msg);
+                        out.broadcast(WsMsg(msg))
                     },
                     Message::Nick(value) => {
                         nick.replace(value.clone());
-                        send(&mut out.borrow_mut(), Message::Nick(value)).unwrap();
+                        out.send(WsMsg(Message::Nick(value)))
                     },
                     Message::Me(content) => {
                         let msg = Message::Me(format!("{} {}", nick.borrow(), content));
-                        senders.borrow_mut().broadcast(msg);
+                        out.broadcast(WsMsg(msg))
                     },
-                };
+                }
+            } else {
+                Ok(())
             }
-            Ok(())
         }
-    }).unwrap();
+    });
+
+    match server {
+        Ok(_) => println!("Exited successfully"),
+        Err(e) => eprintln!("Server error: {:?}", e)
+    };
 }
