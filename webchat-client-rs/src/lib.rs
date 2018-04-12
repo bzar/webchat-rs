@@ -36,7 +36,11 @@ pub fn recv(buffer: &[u8]) {
             Message::Ping => send_message(Message::Pong),
             Message::Pong => log("got Pong!"),
             Message::Chat(content) | Message::Me(content) => add_message(&content),
-            Message::Nick(nick) => add_message(&format!("You are now known as {}", nick))
+            Message::Nick(nick) => {
+                let mut msg = "You are now known as ".to_owned();
+                msg.push_str(&nick);
+                add_message(&msg);
+            }
         };
     } else {
         log("Received invalid message!");
