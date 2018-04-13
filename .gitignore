@@ -1,0 +1,10 @@
+
+target/
+**/*.rs.bk
+Cargo.lock
+**/*.log
+**/target/
+/**/node_modules/
+**/*.wasm
+**/webchat_client_rs.js
+**/*.lock
